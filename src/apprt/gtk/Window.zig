@@ -263,7 +263,7 @@ pub fn init(self: *Window, app: *App) !void {
         if (try it.next()) |_| {
             const warning_text = try std.fmt.allocPrintZ(
                 self.app.core_app.alloc,
-            \\ There are existing crash reports located at <a href="file://{s}">{s}</a>.
+            \\ ⚠️ There are existing crash reports located at <a href="file://{s}">{s}</a>.
                  \\ If possible, <a href="https://github.com/ghostty-org/ghostty?tab=readme-ov-file#crash-reports">report them to the developers</a> to help improve the application.
                     ,
                 .{crash_dir.path, crash_dir.path}
