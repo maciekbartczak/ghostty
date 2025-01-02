@@ -320,7 +320,7 @@ const c = @cImport({
 
 /// FreeType load flags to enable. The format of this is a list of flags to
 /// enable separated by commas. If you prefix a flag with `no-` then it is
-/// disabled. If you omit a flag, it's default value is used, so you must
+/// disabled. If you omit a flag, its default value is used, so you must
 /// explicitly disable flags you don't want. You can also use `true` or `false`
 /// to turn all flags on or off.
 ///
@@ -2695,6 +2695,9 @@ pub fn loadOptionalFile(
 
 fn writeConfigTemplate(path: []const u8) !void {
     log.info("creating template config file: path={s}", .{path});
+    if (std.fs.path.dirname(path)) |dir_path| {
+        try std.fs.makeDirAbsolute(dir_path);
+    }
     const file = try std.fs.createFileAbsolute(path, .{});
     defer file.close();
     try std.fmt.format(
