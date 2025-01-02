@@ -280,16 +280,10 @@ pub fn init(self: *Window, app: *App) !void {
                 c.adw_banner_set_use_markup(@ptrCast(banner), 1);
 
                 c.adw_banner_set_button_label(@ptrCast(banner), "Dismiss");
-                const close_banner_callback = struct {
-                    fn callback(_: ?*c.GtkWidget, data: ?*anyopaque) callconv(.C) void {
-                        const widget: *c.AdwBanner = @ptrCast(data);
-                        c.adw_banner_set_revealed(widget, c.FALSE);
-                    }
-                }.callback;
                 _ = c.g_signal_connect_data(
                     banner,
                     "button-clicked",
-                    c.G_CALLBACK(&close_banner_callback),
+                    c.G_CALLBACK(&adwHideBanner),
                     banner,
                     null,
                     c.G_CONNECT_DEFAULT,
@@ -311,16 +305,10 @@ pub fn init(self: *Window, app: *App) !void {
                 c.gtk_widget_set_margin_top(@ptrCast(close_button), 10);
                 c.gtk_widget_set_margin_bottom(@ptrCast(close_button), 10);
                 c.gtk_widget_set_margin_end(@ptrCast(close_button), 10);
-                const close_warning_callback = struct {
-                    fn callback(_: ?*c.GtkWidget, data: ?*anyopaque) callconv(.C) void {
-                        const widget: *c.GtkWidget = @ptrCast(@alignCast(data));
-                        c.gtk_widget_set_visible(widget, c.FALSE);
-                    }
-                }.callback;
                 _ = c.g_signal_connect_data(
                     close_button,
                     "clicked",
-                    c.G_CALLBACK(&close_warning_callback),
+                    c.G_CALLBACK(&gtkHideWidget),
                     warning_box,
                     null,
                     0
@@ -1046,6 +1034,16 @@ fn gtkActionReset(
         log.warn("error performing binding action error={}", .{err});
         return;
     };
+}
+
+fn gtkHideWidget(_: ?*c.GtkWidget, data: ?*anyopaque) void {
+    const widget: *c.GtkWidget = @ptrCast(@alignCast(data));
+    c.gtk_widget_set_visible(widget, c.FALSE);
+}
+
+fn adwHideBanner(_: ?*c.GtkWidget, data: ?*anyopaque) void {
+    const banner: *c.AdwBanner = @ptrCast(data);
+    c.adw_banner_set_revealed(banner, c.FALSE);
 }
 
 /// Returns the surface to use for an action.
