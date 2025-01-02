@@ -297,21 +297,20 @@ pub fn init(self: *Window, app: *App) !void {
 
                 c.gtk_box_append(@ptrCast(warning_box), @ptrCast(banner));
             } else {
-                const hbox = c.gtk_box_new(c.GTK_ORIENTATION_HORIZONTAL, 5);
-                c.gtk_widget_set_halign(@ptrCast(hbox), c.GTK_ALIGN_CENTER);
+                const center_box = c.gtk_center_box_new();
 
                 const message = c.gtk_label_new(null);
                 c.gtk_label_set_markup(@ptrCast(message), warning_text.ptr);
                 c.gtk_label_set_use_markup(@ptrCast(message), 1);
+                c.gtk_label_set_justify(@ptrCast(message), c.GTK_JUSTIFY_CENTER);
+                c.gtk_label_set_xalign(@ptrCast(message), 0.5);
                 c.gtk_widget_set_margin_top(@ptrCast(message), 10);
                 c.gtk_widget_set_margin_bottom(@ptrCast(message), 10);
-
-                c.gtk_box_append(@ptrCast(hbox), message);
 
                 const close_button = c.gtk_button_new_from_icon_name("window-close-symbolic");
                 c.gtk_widget_set_margin_top(@ptrCast(close_button), 10);
                 c.gtk_widget_set_margin_bottom(@ptrCast(close_button), 10);
-
+                c.gtk_widget_set_margin_end(@ptrCast(close_button), 10);
                 const close_warning_callback = struct {
                     fn callback(_: ?*c.GtkWidget, data: ?*anyopaque) callconv(.C) void {
                         const widget: *c.GtkWidget = @ptrCast(@alignCast(data));
@@ -327,8 +326,10 @@ pub fn init(self: *Window, app: *App) !void {
                     0
                 );
 
-                c.gtk_box_append(@ptrCast(hbox), close_button);
-                c.gtk_box_append(@ptrCast(warning_box), @ptrCast(hbox));
+                c.gtk_center_box_set_center_widget(@ptrCast(center_box), message);
+                c.gtk_center_box_set_end_widget(@ptrCast(center_box), close_button);
+
+                c.gtk_box_append(@ptrCast(warning_box), @ptrCast(center_box));
             }
 
             c.gtk_widget_add_css_class(@ptrCast(warning_box), "background");
