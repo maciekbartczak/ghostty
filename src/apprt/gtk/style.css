@@ -47,5 +47,5 @@ window.without-window-decoration-and-with-titlebar {
 }
 
 .banner-box:not(:first-child) {
-    border-top: 1px solid alpha(@borders, 0.2);
+  border-top: 1px solid alpha(@borders, 0.2);
 }
