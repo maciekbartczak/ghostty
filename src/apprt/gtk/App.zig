@@ -44,8 +44,6 @@ const log = std.log.scoped(.gtk);
 
 pub const Options = struct {};
 
-/// A global variable indicating if user has dismissed the notice about existing crash reports
-pub var crash_reports_notice_dismissed = false;
 
 core_app: *CoreApp,
 config: Config,
@@ -55,6 +53,9 @@ ctx: *c.GMainContext,
 
 /// True if the app was launched with single instance mode.
 single_instance: bool,
+
+/// A flag indicating if user has dismissed the notice about existing crash reports
+crash_reports_notice_dismissed: bool = false,
 
 /// The "none" cursor. We use one that is shared across the entire app.
 cursor_none: ?*c.GdkCursor,

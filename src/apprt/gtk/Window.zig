@@ -59,6 +59,8 @@ adw_tab_overview_focus_timer: ?c.guint = null,
 
 wayland: ?wayland.SurfaceState,
 
+crash_notice_widget: ?*c.GtkWidget = null,
+
 pub fn create(alloc: Allocator, app: *App) !*Window {
     // Allocate a fixed pointer for our window. We try to minimize
     // allocations but windows and other GUI requirements are so minimal
@@ -580,7 +582,7 @@ pub fn sendToast(self: *Window, title: [:0]const u8) void {
 }
 
 fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c.GtkWidget) !void {
-    if (App.crash_reports_notice_dismissed) {
+    if (app.crash_reports_notice_dismissed) {
         return;
     }
 
@@ -591,9 +593,9 @@ fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c
 
     if (try it.next()) |_| {
         const warning_text = try std.fmt.allocPrintZ(self.app.core_app.alloc,
-            \\ ⚠️ There are existing crash reports located at <a href="file://{s}">{s}</a>.
+            \\ ⚠️ There are existing crash reports located at <a href="file://{0s}">{0s}</a>.
             \\ If possible, <a href="https://github.com/ghostty-org/ghostty?tab=readme-ov-file#crash-reports">report them to the developers</a> to help improve the application.
-        , .{ crash_dir.path, crash_dir.path });
+        , .{crash_dir.path});
         defer self.app.core_app.alloc.free(warning_text);
         const warning_box = c.gtk_box_new(c.GTK_ORIENTATION_VERTICAL, 0);
 
@@ -602,6 +604,7 @@ fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c
             adwaita.versionAtLeast(1, 3, 0))
         {
             const banner = c.adw_banner_new(warning_text.ptr);
+            self.crash_notice_widget = banner;
             c.adw_banner_set_revealed(@ptrCast(banner), 1);
             c.adw_banner_set_use_markup(@ptrCast(banner), 1);
 
@@ -610,13 +613,14 @@ fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c
                 banner,
                 "button-clicked",
                 c.G_CALLBACK(&adwHideBanner),
-                banner,
+                self,
                 null,
                 c.G_CONNECT_DEFAULT,
             );
 
             c.gtk_box_append(@ptrCast(warning_box), @ptrCast(banner));
         } else {
+            self.crash_notice_widget = warning_box;
             const center_box = c.gtk_center_box_new();
 
             const message = c.gtk_label_new(null);
@@ -631,7 +635,7 @@ fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c
             c.gtk_widget_set_margin_top(@ptrCast(close_button), 10);
             c.gtk_widget_set_margin_bottom(@ptrCast(close_button), 10);
             c.gtk_widget_set_margin_end(@ptrCast(close_button), 10);
-            _ = c.g_signal_connect_data(close_button, "clicked", c.G_CALLBACK(&gtkHideWidget), warning_box, null, 0);
+            _ = c.g_signal_connect_data(close_button, "clicked", c.G_CALLBACK(&gtkHideWidget), self, null, 0);
 
             c.gtk_center_box_set_center_widget(@ptrCast(center_box), message);
             c.gtk_center_box_set_end_widget(@ptrCast(center_box), close_button);
@@ -1032,15 +1036,25 @@ fn gtkActionReset(
 }
 
 fn gtkHideWidget(_: ?*c.GtkWidget, data: ?*anyopaque) void {
-    const widget: *c.GtkWidget = @ptrCast(@alignCast(data));
-    c.gtk_widget_set_visible(widget, c.FALSE);
-    App.crash_reports_notice_dismissed = true;
+    const self = userdataSelf(data.?);
+    for (self.app.core_app.surfaces.items) |surface| {
+        const gtk_surface: *Surface = @ptrCast(surface);
+        if (gtk_surface.container.window()) |window| {
+            c.gtk_widget_set_visible(window.crash_notice_widget, c.FALSE);
+        }
+    }
+    self.app.crash_reports_notice_dismissed = true;
 }
 
 fn adwHideBanner(_: ?*c.GtkWidget, data: ?*anyopaque) void {
-    const banner: *c.AdwBanner = @ptrCast(data);
-    c.adw_banner_set_revealed(banner, c.FALSE);
-    App.crash_reports_notice_dismissed = true;
+    const self = userdataSelf(data.?);
+    for (self.app.core_app.surfaces.items) |surface| {
+        const gtk_surface: *Surface = @ptrCast(surface);
+        if (gtk_surface.container.window()) |window| {
+            c.adw_banner_set_revealed(@ptrCast(window.crash_notice_widget), c.FALSE);
+        }
+    }
+    self.app.crash_reports_notice_dismissed = true;
 }
 
 /// Returns the surface to use for an action.
