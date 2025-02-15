@@ -44,7 +44,6 @@ const log = std.log.scoped(.gtk);
 
 pub const Options = struct {};
 
-
 core_app: *CoreApp,
 config: Config,
 

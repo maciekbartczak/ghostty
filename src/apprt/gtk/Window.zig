@@ -582,6 +582,13 @@ pub fn sendToast(self: *Window, title: [:0]const u8) void {
 }
 
 fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c.GtkWidget) !void {
+    if (!((comptime adwaita.versionAtLeast(1, 3, 0)) and
+        adwaita.enabled(&app.config) and
+        adwaita.versionAtLeast(1, 3, 0)))
+    {
+        return;
+    }
+
     if (app.crash_reports_notice_dismissed) {
         return;
     }
@@ -599,49 +606,22 @@ fn displayCrashReportsNoticeIfNeeded(self: *Window, app: *App, parent_widget: *c
         defer self.app.core_app.alloc.free(warning_text);
         const warning_box = c.gtk_box_new(c.GTK_ORIENTATION_VERTICAL, 0);
 
-        if ((comptime adwaita.versionAtLeast(1, 3, 0)) and
-            adwaita.enabled(&app.config) and
-            adwaita.versionAtLeast(1, 3, 0))
-        {
-            const banner = c.adw_banner_new(warning_text.ptr);
-            self.crash_notice_widget = banner;
-            c.adw_banner_set_revealed(@ptrCast(banner), 1);
-            c.adw_banner_set_use_markup(@ptrCast(banner), 1);
+        const banner = c.adw_banner_new(warning_text.ptr);
+        self.crash_notice_widget = banner;
+        c.adw_banner_set_revealed(@ptrCast(banner), 1);
+        c.adw_banner_set_use_markup(@ptrCast(banner), 1);
 
-            c.adw_banner_set_button_label(@ptrCast(banner), "Dismiss");
-            _ = c.g_signal_connect_data(
-                banner,
-                "button-clicked",
-                c.G_CALLBACK(&adwHideBanner),
-                self,
-                null,
-                c.G_CONNECT_DEFAULT,
-            );
+        c.adw_banner_set_button_label(@ptrCast(banner), "Dismiss");
+        _ = c.g_signal_connect_data(
+            banner,
+            "button-clicked",
+            c.G_CALLBACK(&adwHideBanner),
+            self,
+            null,
+            c.G_CONNECT_DEFAULT,
+        );
 
-            c.gtk_box_append(@ptrCast(warning_box), @ptrCast(banner));
-        } else {
-            self.crash_notice_widget = warning_box;
-            const center_box = c.gtk_center_box_new();
-
-            const message = c.gtk_label_new(null);
-            c.gtk_label_set_markup(@ptrCast(message), warning_text.ptr);
-            c.gtk_label_set_use_markup(@ptrCast(message), 1);
-            c.gtk_label_set_justify(@ptrCast(message), c.GTK_JUSTIFY_CENTER);
-            c.gtk_label_set_xalign(@ptrCast(message), 0.5);
-            c.gtk_widget_set_margin_top(@ptrCast(message), 10);
-            c.gtk_widget_set_margin_bottom(@ptrCast(message), 10);
-
-            const close_button = c.gtk_button_new_from_icon_name("window-close-symbolic");
-            c.gtk_widget_set_margin_top(@ptrCast(close_button), 10);
-            c.gtk_widget_set_margin_bottom(@ptrCast(close_button), 10);
-            c.gtk_widget_set_margin_end(@ptrCast(close_button), 10);
-            _ = c.g_signal_connect_data(close_button, "clicked", c.G_CALLBACK(&gtkHideWidget), self, null, 0);
-
-            c.gtk_center_box_set_center_widget(@ptrCast(center_box), message);
-            c.gtk_center_box_set_end_widget(@ptrCast(center_box), close_button);
-
-            c.gtk_box_append(@ptrCast(warning_box), @ptrCast(center_box));
-        }
+        c.gtk_box_append(@ptrCast(warning_box), @ptrCast(banner));
 
         c.gtk_widget_add_css_class(@ptrCast(warning_box), "background");
         c.gtk_widget_add_css_class(@ptrCast(warning_box), "banner-box");
@@ -1033,17 +1013,6 @@ fn gtkActionReset(
         log.warn("error performing binding action error={}", .{err});
         return;
     };
-}
-
-fn gtkHideWidget(_: ?*c.GtkWidget, data: ?*anyopaque) void {
-    const self = userdataSelf(data.?);
-    for (self.app.core_app.surfaces.items) |surface| {
-        const gtk_surface: *Surface = @ptrCast(surface);
-        if (gtk_surface.container.window()) |window| {
-            c.gtk_widget_set_visible(window.crash_notice_widget, c.FALSE);
-        }
-    }
-    self.app.crash_reports_notice_dismissed = true;
 }
 
 fn adwHideBanner(_: ?*c.GtkWidget, data: ?*anyopaque) void {
